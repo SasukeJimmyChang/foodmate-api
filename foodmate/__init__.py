@@ -1,5 +1,5 @@
 from flask import Flask
-from flask_restplus import Api
+from flask_restplus import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from instance.config import Config
@@ -14,17 +14,20 @@ from instance.config import app_config
 
 def create_app(config_name = "development"):
 
-    app = Flask(__name__)
-    api = Api(app, prefix="/v1", title="Foodmate-API", description="foodmate api")
-    app.config.from_object(app_config[config_name])
-    db.init_app(app)
-    migrate = Migrate(app,db)
+    flask_app = Flask(__name__, instance_relative_config=True)
+    app = Api(app = flask_app, version="1.0", prefix="/v1", title="Foodmate-API", description="foodmate api")
 
+    flask_app.config.from_object(app_config[config_name])
+    db.init_app(flask_app)
+    migrate = Migrate(flask_app,db)
+
+    us = app.namespace('user', description='Manage users')
+    us.add_resource(UserList, "/all", methods = ["GET"])
+    us.add_resource(User, "/<int:id>", methods = ["GET", "PUT"])
+    us.add_resource(User, "/create", methods = ["POST"])
+    
     # api.add_resource(User, "/auth/login", methods = ["POST"])
-    api.add_resource(UserList, "/users")
-    api.add_resource(User, "/user/<int:id>", methods = ["GET", "PUT"])
-    api.add_resource(User, "/user", methods = ["POST"])
     # api.add_resource(EventList, "/events")
     # api.add_resource(Event, "/event/<int:id>", methods = ["GET", "PUT"])
 
-    return app
+    return flask_app

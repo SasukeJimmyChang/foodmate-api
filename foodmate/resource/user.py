@@ -1,6 +1,6 @@
-from foodmate import db
+from foodmate import db, app
 from foodmate.model.user import User as UserModel
-from flask_restplus import Resource, reqparse
+from flask_restplus import Resource, reqparse, api
 from datetime import datetime
 
 
@@ -57,7 +57,6 @@ class User(Resource):
             username = data["username"],
             email = data["email"],
             gender = "0",
-
         )
         new_user.set_password(data["password"])
         print(new_user)
@@ -65,18 +64,6 @@ class User(Resource):
         return {
             "message":"create suscced"
         }, 201
-
-
-    # def delete(self, id):
-    #     """刪除用戶"""
-    #     find_user = UserModel.get_by_id(id)
-    #     print(find_user)
-    #     if find_user:
-    #         find_user.delete()
-    #         return {"message":"user deleted"}, 200
-    #     else:
-    #         return {"message":"user not found"}, 204
-
 
     def put(self, id):
         """
