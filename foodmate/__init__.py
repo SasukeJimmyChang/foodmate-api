@@ -14,7 +14,7 @@ firebase_admin.initialize_app(Cred)
 # 初始化firestore
 firebaseDb = firestore.client()
 
-from foodmate.resource.user import UserList, User
+from foodmate.resource.user import UserList, User, SendEmail
 
 from instance.config import app_config
 
@@ -26,7 +26,8 @@ def create_app(config_name = "development"):
 
     us = app.namespace('user', description='Manage users')
     us.add_resource(UserList, "/all_users", methods = ["GET"])
-    us.add_resource(User, "/<string:uid>", methods = ["GET", "PUT"])
+    us.add_resource(User, "/<string:uid>", methods = ["GET", "PUT", "DELETE"])
     us.add_resource(User, "/create", methods = ["POST"])
+    us.add_resource(SendEmail, "/forgotPassword", methods = ["POST"])
 
     return flask_app

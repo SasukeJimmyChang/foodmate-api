@@ -1,6 +1,8 @@
 from foodmate import app, firebaseDb
 from flask_restplus import Resource, reqparse, api
 from firebase_admin import auth
+import requests
+from requests.exceptions import HTTPError
 
 def min_length_str(min_length):
     def validate(s):
@@ -19,7 +21,7 @@ class UserList(Resource):
 
     def get(self):
         """
-        取得用戶列表
+        Get all users
         """
         user_list = auth.list_users().iterate_all()
         print (user_list)
@@ -36,6 +38,23 @@ class UserList(Resource):
                 "message":"success"
             }
 
+class SendEmail(Resource):
+
+    parser = reqparse.RequestParser()
+    parser.add_argument(
+        "email", type = str
+    )
+    def post(self):   # 1.3 POST /user/forgotPassword
+        """
+        Forgot Password
+        """
+        data = User.parser.parse_args()
+        print(data)
+        auth.generate_password_reset_link(data["email"])
+        return {
+            "message":"email: The email of the user whose password is to be reset."
+            }
+
 class User(Resource):
 
     parser = reqparse.RequestParser()
@@ -46,6 +65,12 @@ class User(Resource):
         "password", type = min_length_str(8)
     )
     parser.add_argument(
+        "re_password", type = min_length_str(8)
+    )
+    parser.add_argument(
+        "email", type = str
+    )
+    parser.add_argument(
         "display_name", type = min_length_str(3)
     )
     parser.add_argument(
@@ -54,44 +79,43 @@ class User(Resource):
     parser.add_argument(
         "disabled", type = bool
     )
-
-    def get(self, uid):   #/user/uid
-        """
-        2.5 Get Member Detail
-        """
-        find_user = auth.get_user(uid)
-        type(find_user)
-        return {
-            "user":{
-                "uid":find_user.uid,
-                "phone_number":find_user.phone_number,
-                "display_name":find_user.display_name,
-                "photo_url":find_user.photo_url,
-                "disabled":find_user.disabled
-            }
-        }
     
-    def post(self):   # POST /user/create
+    def post(self):   # 1.4 POST /user/create
         """
-        1.4 Register
+        Register
         """
         data = User.parser.parse_args()
         print(data)
-        newUser = auth.create_user(
-        phone_number = data["phone_number"],
-        display_name = data["display_name"]
-        )
-        return {
-            "message":"create suscced",
-            "user":{
-                "uid":newUser.uid,
-                "phone_number":newUser.phone_number
+        if data["password"] == data["re_password"]:
+            newUser = auth.create_user(
+                phone_number = data["phone_number"],
+                password = data["password"],
+                email = data["email"]
+                )
+            return {
+                "message":"create suscced",
+                "user":{
+                    "uid":newUser.uid,
+                    "phone_number":newUser.phone_number,
+                    "email":newUser.email
+                    }
+                    }, 201
+        else:
+            return {
+                "message":"password is different, plz try again",
             }
-        }, 201
     
-    def put(self, uid):  # PUT /user/uid
+    def delete(self,uid):   # 1.5 delete /user/delete
         """
-        2.3 Update Member Information
+        Delete Account
+        """
+        auth.delete_user(uid)
+        return {
+            "message":"delete successed"}
+    
+    def put(self, uid):  # 2.3 PUT /user/uid
+        """
+        Update Member Information
         """
         find_user = auth.get_user(uid)
         if find_user:
@@ -114,4 +138,20 @@ class User(Resource):
                 }
             }
         else:
-            return {"message": "user not found"}, 204    
+            return {"message": "user not found"}, 204
+
+    def get(self, uid):   #2.5 /user/uid
+        """
+        Get Member Detail
+        """
+        find_user = auth.get_user(uid)
+        type(find_user)
+        return {
+            "user":{
+                "uid":find_user.uid,
+                "phone_number":find_user.phone_number,
+                "display_name":find_user.display_name,
+                "photo_url":find_user.photo_url,
+                "disabled":find_user.disabled
+            }
+        }
