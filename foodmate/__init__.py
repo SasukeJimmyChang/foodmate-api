@@ -1,33 +1,32 @@
+# 引用必要套件
 from flask import Flask
+import firebase_admin
+from firebase_admin import credentials, auth, firestore, initialize_app
 from flask_restplus import Api, Resource
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from instance.config import Config
+from firebase_admin import auth
 
-from datetime import datetime
 
-db = SQLAlchemy()
+# 引用私密金鑰
+# path/to/serviceAccount.json 請用自己存放的路徑
+Cred = credentials.Certificate("service-account-file.json")
+# 初始化firebase，注意不能重複初始化
+firebase_admin.initialize_app(Cred)
+# 初始化firestore
+firebaseDb = firestore.client()
 
-from foodmate.model.user import User as UserModel
-from foodmate.resource.user import User, UserList
+from foodmate.resource.user import UserList, User
+
 from instance.config import app_config
 
 def create_app(config_name = "development"):
 
-    flask_app = Flask(__name__, instance_relative_config=True)
+    flask_app = Flask(__name__, instance_relative_config = True)
+    flask_app.config.from_object(app_config[config_name])
     app = Api(app = flask_app, version="1.0", prefix="/v1", title="Foodmate-API", description="foodmate api")
 
-    flask_app.config.from_object(app_config[config_name])
-    db.init_app(flask_app)
-    migrate = Migrate(flask_app,db)
-
     us = app.namespace('user', description='Manage users')
-    us.add_resource(UserList, "/all", methods = ["GET"])
-    us.add_resource(User, "/<int:id>", methods = ["GET", "PUT"])
+    us.add_resource(UserList, "/all_users", methods = ["GET"])
+    us.add_resource(User, "/<string:uid>", methods = ["GET", "PUT"])
     us.add_resource(User, "/create", methods = ["POST"])
-    
-    # api.add_resource(User, "/auth/login", methods = ["POST"])
-    # api.add_resource(EventList, "/events")
-    # api.add_resource(Event, "/event/<int:id>", methods = ["GET", "PUT"])
 
     return flask_app

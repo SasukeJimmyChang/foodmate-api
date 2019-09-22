@@ -1,91 +1,18 @@
-from foodmate import db, app
-from foodmate.model.user import User as UserModel
+from foodmate import app, firebaseDb
 from flask_restplus import Resource, reqparse, api
-from datetime import datetime
-
+from firebase_admin import auth
 
 def min_length_str(min_length):
     def validate(s):
         if s is None:
-            raise Exception('password required')
+            raise Exception("input required")
         if not isinstance(s, (int, str)):
-            raise Exception('password format error')
+            raise Exception("format error")
         s = str(s)
         if len(s) >= min_length:
             return s
         raise Exception("String must be at least %i characters long" % min_length)
     return validate
-
-
-class User(Resource):
-
-    parser = reqparse.RequestParser()
-    parser.add_argument(
-        'username', type=min_length_str(9), required=True
-    )
-    parser.add_argument(
-        'password', type=min_length_str(8), required=True
-    )
-    parser.add_argument(
-        'email', type=str, required=True
-    )
-
-    def get(self, id):
-        """
-        取讀用戶資料
-        """
-        find_user = UserModel.get_by_id(id)
-        print(find_user)
-        if find_user:
-            if isinstance(find_user.create_time, datetime):
-                find_user.create_time = find_user.create_time.isoformat()
-            if isinstance(find_user.id, int):
-                find_user.id = str(find_user.id)
-            return {"user":find_user.as_dict()}
-        return {'message': 'user not found'}, 404
-
-    def post(self):   # POST /user
-        """
-        建立用戶
-        """
-        data = User.parser.parse_args()
-        print(data)
-        find_user = UserModel.get_by_name(data["username"])
-        if find_user:
-            return {"message": "user already exist"}
-        new_user = UserModel(
-            username = data["username"],
-            email = data["email"],
-            gender = "0",
-        )
-        new_user.set_password(data["password"])
-        print(new_user)
-        UserModel.add(new_user)
-        return {
-            "message":"create suscced"
-        }, 201
-
-    def put(self, id):
-        """
-        更新用戶
-        """
-        find_user = UserModel.get_by_id(id)
-        print(find_user)
-        if find_user:
-            data = User.parser.parse_args()
-            find_user.username = data["username"]
-            find_user.email = data["email"]
-            find_user.set_password(data["password"])
-            find_user.update()
-            # datetime 轉 string
-            if isinstance(find_user.create_time, datetime):
-                find_user.create_time = find_user.create_time.isoformat()
-            # int 轉 string
-            if isinstance(find_user.id, int):
-                find_user.id = str(find_user.id)
-            return find_user.as_dict()
-        else:
-            return {'message': "user not found"}, 204    
 
 
 class UserList(Resource):
@@ -94,14 +21,97 @@ class UserList(Resource):
         """
         取得用戶列表
         """
-        user_list = UserModel.get_user_list()
-        print(user_list)
+        user_list = auth.list_users().iterate_all()
+        print (user_list)
         if user_list:
+            count = 0
+            user_no = []
+            user_uid = []
             for user in user_list:
-                if isinstance(user.id, int):
-                    user.id = str(user.id)
-                if isinstance(user.create_time, datetime):
-                    user.create_time = str(user.create_time)
+                count += 1
+                print("user"+str(count)+":"+user.uid)
+                user_no.append("user"+str(count))
+                user_uid.append(user_uid)
             return {
-                "users": [u.as_dict() for u in user_list]
-                    }
+                "message":"success"
+            }
+
+class User(Resource):
+
+    parser = reqparse.RequestParser()
+    parser.add_argument(
+        "phone_number", type = min_length_str(10)
+    )
+    parser.add_argument(
+        "password", type = min_length_str(8)
+    )
+    parser.add_argument(
+        "display_name", type = min_length_str(3)
+    )
+    parser.add_argument(
+        "photo_url"
+    )
+    parser.add_argument(
+        "disabled", type = bool
+    )
+
+    def get(self, uid):   #/user/uid
+        """
+        2.5 Get Member Detail
+        """
+        find_user = auth.get_user(uid)
+        type(find_user)
+        return {
+            "user":{
+                "uid":find_user.uid,
+                "phone_number":find_user.phone_number,
+                "display_name":find_user.display_name,
+                "photo_url":find_user.photo_url,
+                "disabled":find_user.disabled
+            }
+        }
+    
+    def post(self):   # POST /user/create
+        """
+        1.4 Register
+        """
+        data = User.parser.parse_args()
+        print(data)
+        newUser = auth.create_user(
+        phone_number = data["phone_number"],
+        display_name = data["display_name"]
+        )
+        return {
+            "message":"create suscced",
+            "user":{
+                "uid":newUser.uid,
+                "phone_number":newUser.phone_number
+            }
+        }, 201
+    
+    def put(self, uid):  # PUT /user/uid
+        """
+        2.3 Update Member Information
+        """
+        find_user = auth.get_user(uid)
+        if find_user:
+            data = User.parser.parse_args()
+            print(data)
+            userUpdate = auth.update_user(
+                find_user.uid,
+                phone_number = data["phone_number"],
+                display_name = data["display_name"],
+                photo_url = data["photo_url"],
+                disabled = data["disabled"]
+            )
+            return {
+                "message":"Sucessfully updated user",
+                "user":{
+                    "uid":userUpdate.uid,
+                    "display_name":userUpdate.display_name,
+                    "photo_url":userUpdate.photo_url,
+                    "disabled":userUpdate.disabled
+                }
+            }
+        else:
+            return {"message": "user not found"}, 204    
