@@ -25,6 +25,7 @@ def create_app(config_name = "development"):
     app = Api(app = flask_app, version="1.0", prefix="/v1", title="Foodmate-API", description="foodmate api")
 
     us = app.namespace('user', description='Manage users')
+
     us.add_resource(UserList, "/all_users", methods = ["GET"])
     us.add_resource(User, "/<string:uid>", methods = ["GET", "PUT", "DELETE"])
     us.add_resource(User, "/create", methods = ["POST"])
