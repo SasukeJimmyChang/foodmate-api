@@ -3,6 +3,13 @@ from flask_restplus import Resource, reqparse, fields, marshal_with
 from firebase_admin import auth as adminAuth
 import requests
 from requests.exceptions import HTTPError
+import pyrebase
+from instance.config import app_config
+
+# 初始化 pyrebase
+firebase = pyrebase.initialize_app(app_config["development"].Config)
+
+pyAuth = firebase.auth()
 
 def min_length_str(min_length):
     def validate(s):
@@ -15,6 +22,33 @@ def min_length_str(min_length):
             return s
         raise Exception("String must be at least %i characters long" % min_length)
     return validate
+
+class Auth(Resource):
+
+    parser = reqparse.RequestParser()
+    parser.add_argument(
+        "email", type = str
+    )
+    parser.add_argument(
+        "password", type = str
+    )
+
+    def post(self):
+        """
+        User Login
+        """
+        try:
+            jsonData = Auth.parser.parse_args()
+            print(jsonData)
+            userLogin = pyAuth.sign_in_with_email_and_password(jsonData["email"], jsonData["password"])
+            return {
+                "message":"login succssed",
+                "userUid":userLogin
+            }
+        except requests.exceptions.HTTPError:
+            return {
+                "message":"OOPS! Somthing Wrong~~"
+            }
 
 class UserList(Resource):
 
@@ -50,11 +84,11 @@ class SendEmail(Resource):
         try:
             data = SendEmail.parser.parse_args()
             print(data)
-            adminAuth.generate_password_reset_link(data["email"])
+            pyAuth.send_password_reset_email(data["email"])
             return {
                 "message":"email: The email of the user whose password is to be reset."
                 }
-        except firebase_admin.exceptions.InvalidArgumentError:
+        except adminAuth.exceptions.InvalidArgumentError:
             return {
                 "message":"Error while calling adminAuth service (MISSING_EMAIL):"
             }
@@ -82,6 +116,9 @@ class User(Resource):
     )
     parser.add_argument(
         "disabled", type = bool
+    )
+    parser.add_argument(
+        "id_token", type = str
     )
 
     # userModel = create_app.api.model("user",{
@@ -116,7 +153,7 @@ class User(Resource):
                 return {
                     "message":"Phone Number Already Exists",
                 }
-            except firebase_admin.exceptions.InvalidArgumentError:
+            except adminAuth.exceptions.InvalidArgumentError:
                 return {
                     "message":"EMAIL Already Exists",
                 }
@@ -172,23 +209,20 @@ class User(Resource):
                     "message":"User Not Found",
                 }
 
-    def get(self, uid):   #2.5 /user/uid
+    def get(self, id_token):   #2.5 /user/uid
         """
         Get Member Detail
         """
+        # jsonData = User.parser.parse_args()
+        print(id_token)
         try:
-            find_user = adminAuth.get_user(uid)
+            find_user = pyAuth.get_account_info(id_token)
             type(find_user)
             return {
-                "user":{
-                    "uid":find_user.uid,
-                    "phone_number":find_user.phone_number,
-                    "display_name":find_user.display_name,
-                    "photo_url":find_user.photo_url,
-                    "disabled":find_user.disabled
-                }
+                "message":"Susscced",
+                "userInfo":find_user
             }
-        except adminAuth.UserNotFoundError:
+        except requests.exceptions.HTTPError:
             return {
-                    "message":"User Not Found",
+                    "message":"INVALID_ID_TOKEN",
                 }
