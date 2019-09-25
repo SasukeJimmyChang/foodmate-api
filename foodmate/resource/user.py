@@ -1,9 +1,8 @@
 from foodmate import app, firebaseDb
 from flask_restplus import Resource, reqparse, fields, marshal_with
-from firebase_admin import auth
+from firebase_admin import auth as adminAuth
 import requests
 from requests.exceptions import HTTPError
-import firebase_admin
 
 def min_length_str(min_length):
     def validate(s):
@@ -23,7 +22,7 @@ class UserList(Resource):
         """
         Get all users
         """
-        user_list = auth.list_users().iterate_all()
+        user_list = adminAuth.list_users().iterate_all()
         print (user_list)
         if user_list:
             count = 0
@@ -51,13 +50,13 @@ class SendEmail(Resource):
         try:
             data = SendEmail.parser.parse_args()
             print(data)
-            auth.generate_password_reset_link(data["email"])
+            adminAuth.generate_password_reset_link(data["email"])
             return {
                 "message":"email: The email of the user whose password is to be reset."
                 }
         except firebase_admin.exceptions.InvalidArgumentError:
             return {
-                "message":"Error while calling Auth service (MISSING_EMAIL):"
+                "message":"Error while calling adminAuth service (MISSING_EMAIL):"
             }
 
 class User(Resource):
@@ -85,12 +84,12 @@ class User(Resource):
         "disabled", type = bool
     )
 
-    userModel = {
-        "phone_number":fields.String,
-        "password":fields.String,
-        "re_password":fields.String,
-        "email":fields.String
-    }
+    # userModel = create_app.api.model("user",{
+    #     "phone_number":fields.String,
+    #     "password":fields.String,
+    #     "re_password":fields.String,
+    #     "email":fields.String
+    # })
 
     def post(self):   # 1.4 POST /user/create
         """
@@ -100,7 +99,7 @@ class User(Resource):
         print(data)
         if data["password"] == data["re_password"]:
             try:
-                newUser = auth.create_user(
+                newUser = adminAuth.create_user(
                     phone_number = data["phone_number"],
                     password = data["password"],
                     email = data["email"]
@@ -113,7 +112,7 @@ class User(Resource):
                         "email":newUser.email
                         }
                         }, 201
-            except auth.PhoneNumberAlreadyExistsError:
+            except adminAuth.PhoneNumberAlreadyExistsError:
                 return {
                     "message":"Phone Number Already Exists",
                 }
@@ -125,16 +124,17 @@ class User(Resource):
             return {
                 "message":"Password Is Different, Plz Try Again"
             }
+
     
     def delete(self,uid):   # 1.5 delete /user/delete
         """
         Delete Account
         """
         try:
-            auth.delete_user(uid)
+            adminAuth.delete_user(uid)
             return {
                 "message":"Delete Successed"}
-        except auth.UserNotFoundError:
+        except adminAuth.UserNotFoundError:
             return {
                     "message":"User Not Found",
                 }
@@ -145,11 +145,11 @@ class User(Resource):
         Update Member Information
         """
         try :
-            find_user = auth.get_user(uid)
+            find_user = adminAuth.get_user(uid)
             if find_user:
                 data = User.parser.parse_args()
                 print(data)
-                userUpdate = auth.update_user(
+                userUpdate = adminAuth.update_user(
                     find_user.uid,
                     phone_number = data["phone_number"],
                     display_name = data["display_name"],
@@ -167,7 +167,7 @@ class User(Resource):
                 }
             else:
                 return {"message": "user not found"}, 204
-        except auth.UserNotFoundError:
+        except adminAuth.UserNotFoundError:
             return {
                     "message":"User Not Found",
                 }
@@ -177,7 +177,7 @@ class User(Resource):
         Get Member Detail
         """
         try:
-            find_user = auth.get_user(uid)
+            find_user = adminAuth.get_user(uid)
             type(find_user)
             return {
                 "user":{
@@ -188,7 +188,7 @@ class User(Resource):
                     "disabled":find_user.disabled
                 }
             }
-        except auth.UserNotFoundError:
+        except adminAuth.UserNotFoundError:
             return {
                     "message":"User Not Found",
                 }
