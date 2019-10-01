@@ -1,13 +1,10 @@
-from foodmate import app, firebaseDb
+from foodmate import app, firebaseDb, firebase
 from flask_restplus import Resource, reqparse, fields, marshal_with
 from firebase_admin import auth as adminAuth
-import requests
+import requests, urllib3
 from requests.exceptions import HTTPError
-import pyrebase
 from instance.config import app_config
-
-# 初始化 pyrebase
-firebase = pyrebase.initialize_app(app_config["development"].Config)
+import firebase_admin
 
 pyAuth = firebase.auth()
 
@@ -23,17 +20,26 @@ def min_length_str(min_length):
         raise Exception("String must be at least %i characters long" % min_length)
     return validate
 
+class userModel(object):
+    {
+    "email": fields.String,
+    "password": fields.String
+    }
+    
+
 class Auth(Resource):
 
     parser = reqparse.RequestParser()
     parser.add_argument(
-        "email", type = str
+        "email", type = str, required = True 
     )
     parser.add_argument(
-        "password", type = str
+        "password", type = str, required = True
     )
 
-    def post(self):
+
+    @marshal_with(userModel)
+    def post(self):  # 1.1 POST /auth/login
         """
         User Login
         """
@@ -121,41 +127,37 @@ class User(Resource):
         "id_token", type = str
     )
 
-    # userModel = create_app.api.model("user",{
-    #     "phone_number":fields.String,
-    #     "password":fields.String,
-    #     "re_password":fields.String,
-    #     "email":fields.String
-    # })
-
     def post(self):   # 1.4 POST /user/create
         """
         Register
         """
-        data = User.parser.parse_args()
-        print(data)
-        if data["password"] == data["re_password"]:
+        jsonData = User.parser.parse_args()
+        print(jsonData)
+        if jsonData["password"] == jsonData["re_password"]:
             try:
                 newUser = adminAuth.create_user(
-                    phone_number = data["phone_number"],
-                    password = data["password"],
-                    email = data["email"]
+                    email = jsonData["email"],
+                    password = jsonData["password"],
+                    phone_number = jsonData["phone_number"]
                     )
+                print(newUser)
                 return {
                     "message":"create suscced",
-                    "user":{
-                        "uid":newUser.uid,
-                        "phone_number":newUser.phone_number,
-                        "email":newUser.email
-                        }
-                        }, 201
+                    "user":
+                    {
+                    "uid":newUser.uid,
+                    "phone_number":newUser.phone_number,
+                    "email":newUser.email
+                    }
+                    },201
             except adminAuth.PhoneNumberAlreadyExistsError:
+                    return {
+                        "message":"Phone Number Already Exists"
+                    }
+            except firebase_admin.exceptions.InvalidArgumentError as err:
+                print(err)
                 return {
-                    "message":"Phone Number Already Exists",
-                }
-            except adminAuth.exceptions.InvalidArgumentError:
-                return {
-                    "message":"EMAIL Already Exists",
+                    "message":err.__str__()
                 }
         else:
             return {
