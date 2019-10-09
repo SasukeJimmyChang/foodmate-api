@@ -4,8 +4,14 @@ import firebase_admin
 from firebase_admin import credentials, auth, firestore, initialize_app
 from flask_restplus import Api, Resource
 from firebase_admin import auth
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import pyrebase
 
+from datetime import datetime
+
+# 初始化 DB
+db = SQLAlchemy()
 
 # 引用私密金鑰
 # path/to/serviceAccount.json 請用自己存放的路徑
@@ -26,6 +32,9 @@ def create_app(config_name = "development"):
 
     flask_app = Flask(__name__, instance_relative_config = True)
     flask_app.config.from_object(app_config[config_name])
+
+    db.init_app(flask_app)
+    migrate = Migrate(flask_app,db)
 
     api = Api(app = flask_app, version="1.0", prefix="/v1", title="Foodmate-API", description="foodmate api")
     # Authentication API

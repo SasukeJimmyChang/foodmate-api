@@ -1,3 +1,4 @@
+alembic==1.2.1
 aniso8601==8.0.0
 attrs==19.1.0
 CacheControl==0.12.5
@@ -7,7 +8,9 @@ chardet==3.0.4
 Click==7.0
 firebase-admin==3.0.0
 Flask==1.1.1
+Flask-Migrate==2.5.2
 flask-restplus==0.13.0
+Flask-SQLAlchemy==2.4.1
 gcloud==0.17.0
 google-api-core==1.14.2
 google-api-python-client==1.7.11
@@ -25,6 +28,7 @@ itsdangerous==1.1.0
 Jinja2==2.10.1
 jsonschema==3.0.2
 jws==0.1.3
+Mako==1.1.0
 MarkupSafe==1.1.1
 msgpack==0.6.2
 oauth2client==3.0.0
@@ -34,12 +38,15 @@ pyasn1-modules==0.2.6
 pycryptodome==3.4.3
 Pyrebase==3.0.27
 pyrsistent==0.15.4
+python-dateutil==2.8.0
+python-editor==1.0.4
 python-jwt==2.0.1
 pytz==2019.2
 requests==2.18.0
 requests-toolbelt==0.7.0
 rsa==4.0
 six==1.12.0
+SQLAlchemy==1.3.9
 uritemplate==3.0.0
 urllib3==1.21.1
 Werkzeug==0.16.0
